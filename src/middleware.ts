@@ -7,6 +7,7 @@ const PUBLIC_PATHS = [
   "/book",
   "/cancel",
   "/signin",
+  "/api/signin", // the auth endpoint itself
   "/api/bookings", // POST to create bookings
   "/api/availability/slots",
   "/api/event-types/by-slug",
