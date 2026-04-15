@@ -74,11 +74,11 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
     }
   }
 
-  // ------- SMTP path -------
-  const host = await getSetting("smtp_host");
-  const port = await getSetting("smtp_port");
-  const user = await getSetting("smtp_user");
-  const pass = await getSetting("smtp_pass");
+  // ------- SMTP path (env vars take precedence over DB settings) -------
+  const host = process.env.SMTP_HOST || (await getSetting("smtp_host"));
+  const port = process.env.SMTP_PORT || (await getSetting("smtp_port"));
+  const user = process.env.SMTP_USER || (await getSetting("smtp_user"));
+  const pass = process.env.SMTP_PASS || (await getSetting("smtp_pass"));
 
   if (host && user && pass) {
     const transporter = nodemailer.createTransport({
