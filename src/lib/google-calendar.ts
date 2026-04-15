@@ -210,35 +210,73 @@ export async function getCalendarEvents(
   return allEvents;
 }
 
+export interface CreateEventResult {
+  eventId: string | null;
+  meetUrl: string | null;
+}
+
 export async function createCalendarEvent(event: {
   title: string;
   startDate: string;
   endDate: string;
   location?: string;
   notes?: string;
-}): Promise<string | null> {
+  attendeeEmail?: string;
+  createMeet?: boolean;
+}): Promise<CreateEventResult> {
   const cal = await getCalendarClient();
-  if (!cal) return null;
+  if (!cal) return { eventId: null, meetUrl: null };
 
   const calendarId = (await getSetting("google_primary_calendar")) || "primary";
 
   try {
+    const requestBody: Record<string, unknown> = {
+      summary: event.title,
+      description: event.notes,
+      location: event.location,
+      start: { dateTime: event.startDate },
+      end: { dateTime: event.endDate },
+    };
+
+    // Invite the invitee to the event so they get a Google Calendar invitation
+    if (event.attendeeEmail) {
+      requestBody.attendees = [{ email: event.attendeeEmail }];
+    }
+
+    // Request a Google Meet link if this is a video meeting
+    if (event.createMeet) {
+      requestBody.conferenceData = {
+        createRequest: {
+          requestId: `cal-io-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      };
+    }
+
     const res = await cal.events.insert({
       calendarId,
-      requestBody: {
-        summary: event.title,
-        description: event.notes,
-        location: event.location,
-        start: { dateTime: event.startDate },
-        end: { dateTime: event.endDate },
-      },
+      conferenceDataVersion: event.createMeet ? 1 : 0,
+      sendUpdates: event.attendeeEmail ? "all" : "none",
+      requestBody,
     });
+
     eventCache.clear();
     lastCacheUpdate = 0;
-    return res.data.id ?? null;
+
+    const meetUrl =
+      res.data.hangoutLink ||
+      res.data.conferenceData?.entryPoints?.find(
+        (e) => e.entryPointType === "video"
+      )?.uri ||
+      null;
+
+    return {
+      eventId: res.data.id ?? null,
+      meetUrl: meetUrl ?? null,
+    };
   } catch (error) {
     console.error("Failed to create calendar event:", error);
-    return null;
+    return { eventId: null, meetUrl: null };
   }
 }
 

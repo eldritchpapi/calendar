@@ -123,20 +123,28 @@ export async function POST(request: NextRequest) {
       .run();
   }
 
-  // Create iCal event
+  // Create Google Calendar event (+ auto-generate Meet link for google_meet events)
   const title = `${meta.name} - ${eventType.name}`;
+  const wantMeet = eventType.locationType === "google_meet";
   let icalEventId: string | null = null;
+  let meetUrl: string | null = null;
   try {
-    icalEventId = await createCalendarEvent({
+    const result = await createCalendarEvent({
       title,
       startDate: meta.startTime,
       endDate: meta.endTime,
-      location: eventType.location || undefined,
+      location: wantMeet ? undefined : eventType.location || undefined,
       notes: `Paid booking via Calendar.io\nAmount: ${(session.amount_total ?? 0) / 100} ${session.currency?.toUpperCase()}\nEmail: ${meta.email}${meta.notes ? `\nNotes: ${meta.notes}` : ""}`,
+      attendeeEmail: meta.email,
+      createMeet: wantMeet,
     });
+    icalEventId = result.eventId;
+    meetUrl = result.meetUrl;
   } catch (error) {
     console.error("[Stripe Webhook] iCal sync failed:", error);
   }
+
+  const finalLocation = meetUrl || eventType.location || null;
 
   // Create booking
   const bookingId = uuid();
@@ -152,7 +160,7 @@ export async function POST(request: NextRequest) {
       endTime: meta.endTime,
       timezone: meta.timezone,
       status: "confirmed",
-      location: eventType.location,
+      location: finalLocation,
       notes: meta.notes || null,
       cancellationToken,
       icalEventId,

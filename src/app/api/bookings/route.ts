@@ -112,19 +112,28 @@ export async function POST(request: NextRequest) {
   const cancellationToken = uuid();
   const title = `${data.name} - ${eventType.name}`;
 
-  // Create iCal event
+  // Create Google Calendar event (+ auto-generate Meet link if locationType is google_meet)
+  const wantMeet = eventType.locationType === "google_meet";
   let icalEventId: string | null = null;
+  let meetUrl: string | null = null;
   try {
-    icalEventId = await createCalendarEvent({
+    const result = await createCalendarEvent({
       title,
       startDate: startTime.toISOString(),
       endDate: endTime.toISOString(),
-      location: eventType.location || undefined,
+      location: wantMeet ? undefined : eventType.location || undefined,
       notes: `Booked via Calendar.io\nEmail: ${data.email}${data.notes ? `\nNotes: ${data.notes}` : ""}`,
+      attendeeEmail: data.email,
+      createMeet: wantMeet,
     });
+    icalEventId = result.eventId;
+    meetUrl = result.meetUrl;
   } catch (error) {
     console.error("iCal sync failed:", error);
   }
+
+  // Use the generated Meet link as the booking location; fall back to event type's preset location
+  const finalLocation = meetUrl || eventType.location || null;
 
   await db.insert(bookings)
     .values({
@@ -136,7 +145,7 @@ export async function POST(request: NextRequest) {
       endTime: endTime.toISOString(),
       timezone: data.timezone,
       status: "confirmed",
-      location: eventType.location,
+      location: finalLocation,
       notes: data.notes || null,
       customFieldData: data.customFieldData
         ? JSON.stringify(data.customFieldData)
