@@ -19,6 +19,9 @@ interface EventTypeInfo {
   location: string | null;
   locationType: string | null;
   color: string;
+  price: number | null;
+  currency: string | null;
+  priceLabel: string | null;
 }
 
 interface TimeSlot {
@@ -105,15 +108,39 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
     setSubmitting(true);
 
     try {
+      const payload = {
+        eventTypeSlug: slug,
+        startTime: selectedSlot.start,
+        timezone: tz,
+        ...formData,
+      };
+
+      // Paid event → redirect to Stripe Checkout
+      if (eventType.price && eventType.price > 0) {
+        const res = await fetch("/api/checkout/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert(err.error || "Payment setup failed");
+          return;
+        }
+        const { url } = await res.json();
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+        alert("Could not redirect to payment");
+        return;
+      }
+
+      // Free event → create booking directly
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventTypeSlug: slug,
-          startTime: selectedSlot.start,
-          timezone: tz,
-          ...formData,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -174,6 +201,12 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
                 <Badge variant="secondary">{eventType.duration} min</Badge>
                 {eventType.locationType && (
                   <Badge variant="outline">{eventType.locationType.replace("_", " ")}</Badge>
+                )}
+                {eventType.price && eventType.price > 0 && (
+                  <Badge className="bg-primary/15 text-primary border-0">
+                    {eventType.priceLabel ||
+                      `${(eventType.price / 100).toFixed(2)} ${(eventType.currency || "usd").toUpperCase()}`}
+                  </Badge>
                 )}
               </div>
               {eventType.description && (
@@ -388,7 +421,13 @@ export default function BookingPage({ params }: { params: Promise<{ slug: string
                     </div>
                     <div className="flex gap-2">
                       <Button type="submit" disabled={submitting} className="flex-1">
-                        {submitting ? "Booking..." : "Confirm Booking"}
+                        {submitting
+                          ? (eventType.price && eventType.price > 0
+                              ? "Redirecting to payment..."
+                              : "Booking...")
+                          : (eventType.price && eventType.price > 0
+                              ? `Pay ${(eventType.price / 100).toFixed(2)} ${(eventType.currency || "usd").toUpperCase()} & Book`
+                              : "Confirm Booking")}
                       </Button>
                       <Button
                         type="button"

@@ -49,6 +49,10 @@ export const eventTypes = sqliteTable("event_types", {
   maxFutureDays: integer("max_future_days").default(60),
   customFields: text("custom_fields"),
   isActive: integer("is_active", { mode: "boolean" }).default(true),
+  // Payments — price in cents, null = free
+  price: integer("price"),
+  currency: text("currency").default("usd"),
+  priceLabel: text("price_label"), // e.g. "$250 / 5-call package"
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 });
@@ -83,6 +87,9 @@ export const bookings = sqliteTable("bookings", {
   customFieldData: text("custom_field_data"),
   cancellationToken: text("cancellation_token"),
   icalEventId: text("ical_event_id"),
+  stripeSessionId: text("stripe_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  amountPaid: integer("amount_paid"), // cents
   createdAt: text("created_at").default(sql`(datetime('now'))`),
   cancelledAt: text("cancelled_at"),
 });

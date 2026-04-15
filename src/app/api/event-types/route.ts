@@ -21,6 +21,9 @@ const createSchema = z.object({
   maxFutureDays: z.number().optional(),
   customFields: z.string().optional(),
   isActive: z.boolean().optional(),
+  price: z.number().int().nonnegative().nullable().optional(),
+  currency: z.string().optional(),
+  priceLabel: z.string().optional(),
 });
 
 export async function GET() {

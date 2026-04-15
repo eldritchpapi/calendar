@@ -12,6 +12,9 @@ const PUBLIC_PATHS = [
   "/api/availability/slots",
   "/api/event-types/by-slug",
   "/api/bookings/cancel",
+  "/api/bookings/by-session", // invitees look up booking after Stripe redirect
+  "/api/checkout/create", // Stripe Checkout session
+  "/api/webhooks", // Stripe + other webhooks
   "/api/workflows/execute", // cron-callable
   "/api/google/callback", // OAuth redirect target
   "/embed.js",

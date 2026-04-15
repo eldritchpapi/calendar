@@ -31,6 +31,9 @@ interface EventTypeData {
   minNotice: number;
   maxFutureDays: number;
   customFields: string;
+  price: number | null; // cents
+  currency: string;
+  priceLabel: string;
 }
 
 interface Schedule {
@@ -58,6 +61,9 @@ const defaultData: EventTypeData = {
   minNotice: 60,
   maxFutureDays: 60,
   customFields: "[]",
+  price: null,
+  currency: "usd",
+  priceLabel: "",
 };
 
 export function EventTypeForm({
@@ -377,6 +383,65 @@ export function EventTypeForm({
                 placeholder="Unlimited"
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment (optional)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Leave price blank for a free event. For paid events, invitees
+            complete Stripe Checkout before the booking is confirmed.
+          </p>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2 col-span-2">
+              <Label>Price (USD or major unit)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                value={data.price !== null ? (data.price / 100).toString() : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setData((d) => ({
+                    ...d,
+                    price: v === "" ? null : Math.round(parseFloat(v) * 100),
+                  }));
+                }}
+                placeholder="Free"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Input
+                value={data.currency}
+                onChange={(e) =>
+                  setData((d) => ({ ...d, currency: e.target.value.toLowerCase() }))
+                }
+                placeholder="usd"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Price label (optional)</Label>
+            <Input
+              value={data.priceLabel}
+              onChange={(e) =>
+                setData((d) => ({ ...d, priceLabel: e.target.value }))
+              }
+              placeholder={
+                data.price
+                  ? `$${(data.price / 100).toFixed(2)} / session`
+                  : "Displayed on the booking page"
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Example: <span className="font-mono">$250 / 5-call package</span> —
+              lets you customize what shows on the booking page.
+            </p>
           </div>
         </CardContent>
       </Card>
